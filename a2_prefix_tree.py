@@ -169,6 +169,58 @@ class SimplePrefixTree(Autocompleter):
     # Add code for Parts 1(c), 2, and 3 here
     ###########################################################################
 
+    def insert(self, value: Any, weight: float, prefix: list) -> None:
+        """Insert the given value into this Autocompleter.
+
+        The value is inserted with the given weight, and is associated with
+        the prefix sequence <prefix>.
+
+        If the value has already been inserted into this autocompleter
+        (compare values using ==), then the given weight should be *added* to
+        the existing weight of this value.
+
+        Preconditions:
+        - weight > 0
+        - the given value is either:
+            1) not in this Autocompleter, or
+            2) was previously inserted with the SAME prefix sequence
+        """
+        if not prefix:
+            self.update_existing_value(value, weight)
+            return
+
+        for subtree in self.subtrees:
+            if subtree.root == [prefix[0]]:
+                if len(prefix) == 1:
+                    subtree.update_existing_value(value, weight)
+                else:
+                    subtree.insert(value, weight, prefix[1:])
+                subtree.weight += weight  # Update the weight of the subtree
+                return
+
+        # If the first element of the prefix is not found, create a new subtree
+        new_subtree = SimplePrefixTree()
+        new_subtree.root = [prefix[0]]
+        if len(prefix) == 1:
+            new_subtree.update_existing_value(value, weight)
+        else:
+            new_subtree.insert(value, weight, prefix[1:])
+        self.subtrees.append(new_subtree)
+        self.weight += weight  # Update the weight of the main tree
+
+    def update_existing_value(self, value: Any, weight: float) -> None:
+        """ Helper for insert() """
+        for subtree in self.subtrees:
+            if subtree.root == value[0]:  # Change this line to check the first element of value
+                subtree.weight += weight
+                return
+
+        # If the value is not found, create a new subtree for it
+        new_subtree = SimplePrefixTree()
+        new_subtree.root = value[0]  # Change this line to use the first element of value
+        new_subtree.weight = weight
+        self.subtrees.append(new_subtree)
+
 
 ################################################################################
 # CompressedPrefixTree (Part 6)
