@@ -127,11 +127,15 @@ class SimplePrefixTree(Autocompleter):
 
     def is_empty(self) -> bool:
         """Return whether this simple prefix tree is empty."""
-        return self.weight == 0.0
+        if self.weight == 0.0:
+            return True
+        return False
 
     def is_leaf(self) -> bool:
         """Return whether this simple prefix tree is a leaf."""
-        return not self.subtrees and self.weight > 0
+        if self.weight > 0 and self.subtrees == []:
+            return True
+        return False
 
     def __len__(self) -> int:
         """Return the number of LEAF values stored in this prefix tree.
@@ -139,7 +143,13 @@ class SimplePrefixTree(Autocompleter):
         Note that this is a different definition than how we calculate __len__
         of regular trees from lecture!
         """
-        return 1 if self.is_leaf() else sum(len(subtree) for subtree in self.subtrees)
+        leaves = 0
+        for item in self.subtrees:
+            if item.is_leaf():
+                leaves += 1
+            elif self.weight > 0:
+                leaves += len(item)
+        return leaves
 
     ###########################################################################
     # Extra helper methods
