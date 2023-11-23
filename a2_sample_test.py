@@ -19,6 +19,56 @@ from a2_autocomplete_engines import SentenceAutocompleteEngine
 
 ###########################################################################
 # Parts 1(c) - 3 sample tests
+def test_insert_with_empty_prefix() -> None:
+    """Test inserting a single value with an empty prefix into a new prefix tree."""
+    t = SimplePrefixTree()
+    t.insert('value', 1.0, [])
+
+    assert len(t) == 1  # Only the inserted value is counted
+    assert t.weight == 1.0  # Weight of the tree should be 1.0
+
+    # Check the structure of the tree
+    assert t.root == []  # Root of the tree should have an empty prefix
+    assert len(t.subtrees) == 1  # There should be one subtree (the leaf)
+    assert t.subtrees[0].root == 'value'  # The leaf should contain the inserted value
+    assert t.subtrees[0].weight == 1.0  # The leaf's weight should be 1.0
+
+def test_insert_with_length_one_prefix() -> None:
+    """Test inserting a single value with a length-one prefix into a new prefix tree."""
+    t = SimplePrefixTree()
+    t.insert('value', 1.0, ['x'])
+
+    assert len(t) == 1  # Only the inserted value is counted
+    assert t.weight == 1.0  # Weight of the tree should be 1.0
+
+    # Check the structure of the tree
+    assert t.root == []  # Root of the tree should have an empty prefix
+    assert len(t.subtrees) == 1  # There should be one subtree (internal node with prefix [x])
+    assert t.subtrees[0].root == ['x']  # The internal node should have the prefix [x]
+    assert len(t.subtrees[0].subtrees) == 1  # The internal node should have one subtree (the leaf)
+    assert t.subtrees[0].subtrees[0].root == 'value'  # The leaf should contain the inserted value
+    assert t.subtrees[0].subtrees[0].weight == 1.0  # The leaf's weight should be 1.0
+
+def test_insert_with_length_n_prefix() -> None:
+    """Test inserting a single value with a length-n prefix into a new prefix tree."""
+    t = SimplePrefixTree()
+    prefix = ['x1', 'x2', 'x3']
+    t.insert('value', 1.0, prefix)
+
+    assert len(t) == 1  # Only the inserted value is counted
+    assert t.weight == 1.0  # Weight of the tree should be 1.0
+
+    # Check the structure of the tree
+    current = t
+    for element in prefix:
+        assert len(current.subtrees) == 1  # Each node should have exactly one subtree
+        current = current.subtrees[0]
+        assert current.root == [element]  # Each node should have the correct prefix
+
+    # Check the leaf node
+    assert current.subtrees[0].root == 'value'  # The leaf should contain the inserted value
+    assert current.subtrees[0].weight == 1.0  # The leaf's weight should be 1.0
+
 ###########################################################################
 def test_simple_prefix_tree_structure() -> None:
     """This is a test for the structure of a small simple prefix tree.
@@ -48,7 +98,7 @@ def test_simple_prefix_tree_structure() -> None:
 
     assert right.root == ['d']
     assert right.weight == 4.0
-
+    return print(t)
 
 # def test_simple_prefix_tree_autocomplete() -> None:
 #     """This is a test for the correct autocomplete behaviour for a small
