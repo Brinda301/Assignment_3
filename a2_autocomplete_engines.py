@@ -72,9 +72,23 @@ class LetterAutocompleteEngine:
         # We've opened the file for you here. You should iterate over the
         # lines of the file and process them according to the description in
         # this method's docstring.
+        self.autocompleter = SimplePrefixTree()
         with open(config['file'], encoding='utf8') as f:
             for line in f:
-                ...
+                sanitized = self.sanitize(line)
+                if sanitized.strip() != '':
+                    self.autocompleter.insert(sanitized, 1.0, list(sanitized))
+
+    def sanitize(self, input_string):
+        """ Sanitization Method for initializer"""
+        # Convert all letters to lowercase
+        lowercase_string = input_string.lower()
+
+        # Remove characters that are not alphanumeric and not space
+        sanitized_string = ''.join(
+            char for char in lowercase_string if char.isalnum() or char.isspace())
+
+        return sanitized_string
 
     def autocomplete(self, prefix: str, limit: int | None = None) -> list[tuple[str, float]]:
         """Return up to <limit> matches for the given prefix string.
@@ -91,6 +105,7 @@ class LetterAutocompleteEngine:
         - limit is None or limit > 0
         - <prefix> is a sanitized string
         """
+        return self.autocompleter.autocomplete(list(prefix), limit)
 
     def remove(self, prefix: str) -> None:
         """Remove all strings that match the given prefix string.
@@ -101,6 +116,7 @@ class LetterAutocompleteEngine:
         Preconditions:
         - <prefix> is a sanitized string
         """
+        self.autocompleter.remove(list(prefix))
 
 
 @check_contracts
@@ -147,6 +163,24 @@ class SentenceAutocompleteEngine:
         """
         # We haven't given you any starter code here! You should review how
         # you processed CSV files on Assignment 1.
+        self.autocompleter = SimplePrefixTree()
+        with open(config['file'], encoding='utf8') as f:
+            for line in f:
+                string, weight = line.split(',')
+                sanitized = self.sanitize(string)
+                if sanitized.strip() != '':
+                    self.autocompleter.insert(sanitized, float(weight), sanitized.split())
+
+    def sanitize(self, input_string):
+        """ Sanitization Method for initializer"""
+        # Convert all letters to lowercase
+        lowercase_string = input_string.lower()
+
+        # Remove characters that are not alphanumeric and not space
+        sanitized_string = ''.join(
+            char for char in lowercase_string if char.isalnum() or char.isspace())
+
+        return sanitized_string
 
     def autocomplete(self, prefix: str, limit: int | None = None) -> list[tuple[str, float]]:
         """Return up to <limit> matches for the given prefix string.
@@ -164,6 +198,8 @@ class SentenceAutocompleteEngine:
         - <prefix> is a sanitized string
         """
 
+        return self.autocompleter.autocomplete(prefix.split(), limit)
+
     def remove(self, prefix: str) -> None:
         """Remove all strings that match the given prefix.
 
@@ -173,6 +209,7 @@ class SentenceAutocompleteEngine:
         Preconditions:
         - <prefix> is a sanitized string
         """
+        self.autocompleter.remove(prefix.split())
 
 
 ################################################################################
@@ -218,6 +255,26 @@ class MelodyAutocompleteEngine:
         """
         # We haven't given you any starter code here! You should review how
         # you processed CSV files on Assignment 1.
+        if config['autocompleter'] == 'simple':
+            self.autocompleter = SimplePrefixTree(1.0)
+        elif config['autocompleter'] == 'compressed':
+            self.autocompleter = CompressedPrefixTree(1.0)
+
+        with open(config['file'], 'r') as csv_file:
+            reader = csv.reader(csv_file)
+            for row in reader:
+                name = row[0]
+                notes = []
+                intervals = []
+                for i in range(1, len(row) - 1, 2):
+                    if row[i] == '':
+                        break
+                    note = (int(row[i]), int(row[i+1]))
+                    notes.append(note)
+                    if i > 1:
+                        intervals.append(int(row[i]) - int(row[i-2]))
+                melody = Melody(name, notes)
+                self.autocompleter.insert(melody, intervals)
 
     def autocomplete(
         self, prefix: list[int], limit: int | None = None
@@ -232,9 +289,11 @@ class MelodyAutocompleteEngine:
         Preconditions:
         - limit is None or limit > 0
         """
+        return self.autocompleter.autocomplete(prefix, limit)
 
     def remove(self, prefix: list[int]) -> None:
         """Remove all melodies that match the given interval sequence."""
+        self.autocompleter.remove(prefix)
 
 
 ###############################################################################
@@ -325,15 +384,15 @@ if __name__ == '__main__':
     # you see "None!" under both "Code Errors" and "Style and Convention Errors".
     # TIP: To quickly uncomment lines in PyCharm, select the lines below and press
     # "Ctrl + /" or "⌘ + /".
-    # import python_ta
-    # python_ta.check_all(
-    #     config={
-    #         'allowed-io': [
-    #             'LetterAutocompleteEngine.__init__',
-    #             'SentenceAutocompleteEngine.__init__',
-    #             'MelodyAutocompleteEngine.__init__'
-    #         ],
-    #         'extra-imports': ['csv', 'time', 'sys', 'a2_prefix_tree', 'a2_melody'],
-    #         'max-line-length': 100,
-    #     }
-    # )
+    import python_ta
+    python_ta.check_all(
+        config={
+            'allowed-io': [
+                'LetterAutocompleteEngine.__init__',
+                'SentenceAutocompleteEngine.__init__',
+                'MelodyAutocompleteEngine.__init__'
+            ],
+            'extra-imports': ['csv', 'time', 'sys', 'a2_prefix_tree', 'a2_melody'],
+            'max-line-length': 100,
+        }
+    )

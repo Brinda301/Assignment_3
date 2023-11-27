@@ -180,17 +180,32 @@ class SimplePrefixTree(Autocompleter):
     ###########################################################################
 
     def insert(self, value: Any, weight: float, prefix: list) -> None:
-        """Insert the given value into this Autocompleter."""
+        """Insert the given value into this Autocompleter.
+
+        The value is inserted with the given weight, and is associated with
+        the prefix sequence <prefix>.
+
+        If the value has already been inserted into this autocompleter
+        (compare values using ==), then the given weight should be *added* to
+        the existing weight of this value.
+
+        Preconditions:
+        - weight > 0
+        - the given value is either:
+            1) not in this Autocompleter, or
+            2) was previously inserted with the SAME prefix sequence
+        """
         # If the prefix is empty, directly update or add the value as a leaf
         if not prefix:
             self.update_existing_value_or_add_new(value, weight)
         else:
             # Search for the subtree with the next element in the prefix
-            subtree = next((sub for sub in self.subtrees if sub.root == [prefix[0]]), None)
+            subtree = next((sub for sub in self.subtrees if sub.root == self.root + [prefix[0]]),
+                           None)
             if subtree is None:
                 # Create a new subtree if not found
                 subtree = SimplePrefixTree()
-                subtree.root = [prefix[0]]
+                subtree.root = self.root + [prefix[0]]  # Append to existing root list
                 self.subtrees.append(subtree)
 
             # Recursively insert in the found or new subtree
@@ -216,6 +231,95 @@ class SimplePrefixTree(Autocompleter):
         """Update the weight of this tree based on its subtrees."""
         self.weight = sum(subtree.weight for subtree in self.subtrees)
 
+    def autocomplete(self, prefix: list,
+                     limit: int | None = None) -> list[tuple[Any, float]]:
+        """Return up to <limit> matches for the given prefix.
+
+        The return value is a list of tuples (value, weight), and must be
+        sorted by non-increasing weight. You can decide how to break ties.
+
+        If limit is None, return *every* match for the given prefix.
+
+        Preconditions:
+        - limit is None or limit > 0
+        """
+        suggestions = []
+
+        # Find the subtree corresponding to the given prefix
+        subtree = self.find_subtree(prefix)
+        if subtree is not None:
+            # Recursively collect suggestions from the subtree
+            suggestions = subtree.collect_suggestions(limit)
+
+        # Sort the suggestions in non-increasing weight order
+        suggestions.sort(key=lambda x: x[1], reverse=True)
+
+        # Limit the number of suggestions if a limit is specified
+        if limit is not None:
+            suggestions = suggestions[:limit]
+
+        return suggestions
+
+    def find_subtree(self, prefix: list):
+        """Find the subtree corresponding to the given prefix."""
+        if not prefix:
+            return self
+
+        # Search for the subtree with the next element in the prefix
+        subtree = next((sub for sub in self.subtrees if sub.root[-1] == prefix[0]), None)
+        if subtree is not None:
+            # Recursively search in the found subtree
+            return subtree.find_subtree(prefix[1:])
+        else:
+            return None
+
+    def collect_suggestions(self, limit: int | None) -> list[tuple[Any, float]]:
+        """Recursively collect suggestions from the subtree."""
+        suggestions = []
+
+        # Sort subtrees by non-increasing weight order
+        sorted_subtrees = sorted(self.subtrees, key=lambda subtree: subtree.weight, reverse=True)
+
+        for subtree in sorted_subtrees:
+            # Collect suggestions from each subtree until the limit is reached
+            subtree_suggestions = subtree.collect_suggestions(limit)
+            suggestions.extend(subtree_suggestions)
+
+            # Update the limit after collecting suggestions from each subtree
+            if limit is not None:
+                limit -= len(subtree_suggestions)
+                if limit <= 0:
+                    break
+
+        # Include the root value if it's a leaf node
+        if not self.subtrees:
+            suggestions.append((self.root, self.weight))
+
+        return suggestions
+
+    def remove(self, prefix: list) -> None:
+        """Remove all values associated with the given prefix.
+
+        Preconditions:
+        - the given prefix is associated with at least one value in this Autocompleter """
+        if not prefix:
+            # If the prefix is empty, remove all leaf values
+            self .subtrees = []
+            self.weight = 0
+        else:
+            # Search for the subtree with the next element  in the prefix
+            subtree = next((sub for sub in self.subtrees if sub.root[-1] == prefix[0]), None)
+            if subtree is not None:
+                # Recursively remove in the found subtree
+                subtree.remove(prefix[1:])
+
+                # If the subtree is now empty, remove it from the list of subtrees
+                if subtree.is_empty():
+                    self.subtrees.remove(subtree)
+
+            # Update the weight of the current tree
+            self.update_weight()
+
 
 ################################################################################
 # CompressedPrefixTree (Part 6)
@@ -234,9 +338,55 @@ class CompressedPrefixTree(SimplePrefixTree):
     """
     subtrees: list[CompressedPrefixTree]  # Note the different type annotation
 
-    ###########################################################################
-    # Add code for Part 6 here
-    ###########################################################################
+    def insert(self, value: Any, weight: float, prefix: list) -> None:
+        """Insert the given value into this Autocompleter.
+
+        The value is inserted with the given weight, and is associated with
+        the prefix sequence <prefix>.
+
+        If the value has already been inserted into this autocompleter
+        (compare values using ==), then the given weight should be *added* to
+        the existing weight of this value.
+
+        Preconditions:
+        - weight > 0
+        - the given value is either:
+            1) not in this Autocompleter, or
+            2) was previously inserted with the SAME prefix sequence
+        """
+        if not prefix:
+            self.update_existing_value_or_add_new(value, weight)
+        else:
+            subtree = self.find_subtree(prefix[0])
+            if subtree is None:
+                subtree = CompressedPrefixTree()
+                subtree.root = self.root + [prefix[0]]
+                self.subtrees.append(subtree)
+            subtree.insert(value, weight, prefix[1:])
+        self.update_weight()
+
+    def find_subtree(self, prefix_elem: Any) -> Any:
+        """Return the subtree with the given prefix element, if it exists."""
+        for subtree in self.subtrees:
+            if subtree.root[-1] == prefix_elem:
+                return subtree
+        return None
+
+    def remove(self, prefix: list) -> None:
+        """Remove all values associated with the given prefix.
+
+        Preconditions:
+        - the given prefix is associated with at least one value in this Autocompleter """
+        if not prefix:
+            self.subtrees = []
+            self.weight = 0.0
+        else:
+            subtree = self.find_subtree(prefix[0])
+            if subtree is not None:
+                subtree.remove(prefix[1:])
+                if subtree.is_empty():
+                    self.subtrees.remove(subtree)
+        self.update_weight()
 
 
 if __name__ == '__main__':
