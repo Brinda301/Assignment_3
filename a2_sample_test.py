@@ -14,7 +14,7 @@ Note: this file is for support purposes only, and is not part of your
 assignment submission.
 """
 from a2_prefix_tree import SimplePrefixTree, CompressedPrefixTree
-from a2_autocomplete_engines import SentenceAutocompleteEngine
+from a2_autocomplete_engines import SentenceAutocompleteEngine, MelodyAutocompleteEngine
 
 
 ###########################################################################
@@ -200,6 +200,36 @@ def test_sentence_autocompleter() -> None:
     assert results[0][0] == 'a star is born'
     assert results[0][1] == 15.0 + 6.5
 
+def test_melody_autocomplete_empty_prefix() -> None:
+    """Test autocompleting melodies with an empty prefix."""
+    engine = SentenceAutocompleteEngine({
+        'file': 'data/texts/sample_sentences.csv',
+        'autocompleter': 'simple'
+    })
+    results = engine.autocomplete('what a')
+    assert len(results) == 1
+    assert results[0][0] == 'what a wonderful world'
+    assert results[0][1] == 1.0
+
+    results = engine.autocomplete([])  # Empty prefix should return all melodies
+    assert len(results) == 2
+    assert results[0][0].name == "Melody1"
+    assert results[1][0].name == "Melody2"
+
+def test_melody_autocomplete_specific_prefix() -> None:
+    """Test autocompleting melodies with a specific prefix."""
+    engine = MelodyAutocompleteEngine()
+    melody1 = Melody([(60, 300), (62, 300), (64, 300)], "Melody1")
+    melody2 = Melody([(60, 300), (61, 300), (63, 300)], "Melody2")
+
+    engine.insert(melody1, 1.0, melody1.interval_sequence())
+    engine.insert(melody2, 1.0, melody2.interval_sequence())
+
+    # Assume interval_sequence method gives the interval sequence of a melody
+    prefix = [2]  # Interval of 2
+    results = engine.autocomplete(prefix)
+    assert len(results) == 1
+    assert results[0][0].name == "Melody1"
 
 # ###########################################################################
 # # Part 6 sample tests

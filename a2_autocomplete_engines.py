@@ -72,24 +72,52 @@ class LetterAutocompleteEngine:
         # We've opened the file for you here. You should iterate over the
         # lines of the file and process them according to the description in
         # this method's docstring.
-        self.autocompleter = SimplePrefixTree()
+        if config['autocompleter'] == 'simple':
+            self.autocompleter = SimplePrefixTree()
+        elif config['autocompleter'] == 'compressed':
+            self.autocompleter = CompressedPrefixTree()
+        else:
+            raise ValueError("Invalid autocompleter type")
+
         with open(config['file'], encoding='utf8') as f:
             for line in f:
-                sanitized = self.sanitize(line)
+                # Strip the newline character and then sanitize
+                sanitized = self.sanitize(line.strip())
                 if sanitized.strip() != '':
                     self.autocompleter.insert(sanitized, 1.0, list(sanitized))
 
-    def sanitize(self, input_string):
-        """ Sanitization Method for initializer"""
-        # Convert all letters to lowercase
-        lowercase_string = input_string.lower()
+    def sanitize(self, input_string: str) -> str:
+        """Sanitize the input string."""
+        # Convert all letters to lowercase and remove unwanted characters
+        return ''.join(char.lower() for char in input_string if char.isalnum() or char.isspace())
 
-        # Remove characters that are not alphanumeric and not space
-        sanitized_string = ''.join(
-            char for char in lowercase_string if char.isalnum() or char.isspace())
-
-        return sanitized_string
-
+    #     with open(config['file'], encoding='utf8') as f:
+    #         for line in f:
+    #             sanitized = self.sanitize(line)
+    #             if sanitized.strip() != '':
+    #                 self.autocompleter.insert(sanitized, 1.0, list(sanitized))
+    #
+    # def sanitize(self, input_string):
+    #     """ Sanitization Method for initializer"""
+    #     # Convert all letters to lowercase
+    #     lowercase_string = input_string.lower()
+    #
+    #     # Remove characters that are not alphanumeric and not space
+    #     sanitized_string = ''.join(
+    #         char for char in lowercase_string if char.isalnum() or char.isspace())
+    #
+    #     return sanitized_string
+    #
+    # def sanitize(self, input_string):
+    #     """ Sanitization Method for initializer"""
+    #     # Convert all letters to lowercase
+    #     lowercase_string = input_string.lower()
+    #
+    #     # Remove characters that are not alphanumeric and not space
+    #     sanitized_string = ''.join(
+    #         char for char in lowercase_string if char.isalnum() or char.isspace())
+    #
+    #     return sanitized_string
     def autocomplete(self, prefix: str, limit: int | None = None) -> list[tuple[str, float]]:
         """Return up to <limit> matches for the given prefix string.
 
@@ -163,7 +191,13 @@ class SentenceAutocompleteEngine:
         """
         # We haven't given you any starter code here! You should review how
         # you processed CSV files on Assignment 1.
-        self.autocompleter = SimplePrefixTree()
+        if config['autocompleter'] == 'simple':
+            self.autocompleter = SimplePrefixTree()
+        elif config['autocompleter'] == 'compressed':
+            self.autocompleter = CompressedPrefixTree()
+        else:
+            raise ValueError("Invalid autocompleter type")
+
         with open(config['file'], encoding='utf8') as f:
             for line in f:
                 string, weight = line.split(',')
@@ -256,45 +290,50 @@ class MelodyAutocompleteEngine:
         # We haven't given you any starter code here! You should review how
         # you processed CSV files on Assignment 1.
         if config['autocompleter'] == 'simple':
-            self.autocompleter = SimplePrefixTree(1.0)
+            self.autocompleter = SimplePrefixTree()
         elif config['autocompleter'] == 'compressed':
-            self.autocompleter = CompressedPrefixTree(1.0)
+            self.autocompleter = CompressedPrefixTree()
+        else:
+            raise ValueError("Invalid autocompleter type")
 
-        with open(config['file'], 'r') as csv_file:
-            reader = csv.reader(csv_file)
+            # Process the CSV file and insert melodies
+        with open(config['file'], encoding='utf8') as f:
+            reader = csv.reader(f)
             for row in reader:
-                name = row[0]
-                notes = []
-                intervals = []
-                for i in range(1, len(row) - 1, 2):
-                    if row[i] == '':
-                        break
-                    note = (int(row[i]), int(row[i+1]))
-                    notes.append(note)
-                    if i > 1:
-                        intervals.append(int(row[i]) - int(row[i-2]))
-                melody = Melody(name, notes)
-                self.autocompleter.insert(melody, intervals)
+                if row:
+                    melody_name = row[0]
+                    notes = self._parse_notes(row[1:])
+                    melody = Melody(melody_name, notes)
+                    interval_sequence = self.calculate_interval_sequence(melody)
+                    self.autocompleter.insert(melody, 1.0, interval_sequence)
 
-    def autocomplete(
-        self, prefix: list[int], limit: int | None = None
-    ) -> list[tuple[Melody, float]]:
-        """Return up to <limit> matches for the given interval sequence.
+    def _parse_notes(self, note_data: list[str]) -> list[tuple[int, int]]:
+        """Parse note data from CSV row into a list of note tuples."""
+        notes = []
+        for i in range(0, len(note_data), 2):
+            if note_data[i] == '':
+                break
+            pitch = int(note_data[i])
+            duration = int(note_data[i + 1])
+            notes.append((pitch, duration))
+        return notes
 
-        The return value is a list of tuples (melody, weight), and must be
-        sorted by non-increasing weight. (You can decide how to break ties.)
+    def calculate_interval_sequence(self, melody: Melody) -> list[int]:
+        """Calculate and return the interval sequence of a given melody."""
+        intervals = []
+        for i in range(1, len(melody.notes)):
+            interval = melody.notes[i][0] - melody.notes[i - 1][0]
+            intervals.append(interval)
+        return intervals
 
-        If limit is None, return *every* match for the given interval sequence.
-
-        Preconditions:
-        - limit is None or limit > 0
-        """
+    def autocomplete(self, prefix: list[int], limit: int | None = None) -> list[
+        tuple[Melody, float]]:
+        """Return up to <limit> matches for the given interval prefix."""
         return self.autocompleter.autocomplete(prefix, limit)
 
     def remove(self, prefix: list[int]) -> None:
-        """Remove all melodies that match the given interval sequence."""
+        """Remove all melodies that match the given interval prefix."""
         self.autocompleter.remove(prefix)
-
 
 ###############################################################################
 # Sample runs
@@ -370,9 +409,9 @@ if __name__ == '__main__':
     import sys
     sys.setrecursionlimit(5000)
 
-    # print(example_letter_autocomplete())
-    # print(example_sentence_autocomplete())
-    # print(example_melody_autocomplete(play=False))
+    print(example_letter_autocomplete())
+    print(example_sentence_autocomplete())
+    print(example_melody_autocomplete(play=True))
 
     # Uncomment the python_ta lines below and run this module.
     # This is different that just running doctests! To run this file in PyCharm,
