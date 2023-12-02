@@ -265,7 +265,6 @@ def test_compressed_prefix_tree_structure() -> None:
     assert right.weight == 4.0
 
 
-
 if __name__ == '__main__':
     import pytest
     pytest.main(['a2_sample_test.py'])

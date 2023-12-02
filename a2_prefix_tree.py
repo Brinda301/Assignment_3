@@ -304,7 +304,7 @@ class SimplePrefixTree(Autocompleter):
         - the given prefix is associated with at least one value in this Autocompleter """
         if not prefix:
             # If the prefix is empty, remove all leaf values
-            self .subtrees = []
+            self.subtrees = []
             self.weight = 0
         else:
             # Search for the subtree with the next element  in the prefix
@@ -339,54 +339,148 @@ class CompressedPrefixTree(SimplePrefixTree):
     subtrees: list[CompressedPrefixTree]  # Note the different type annotation
 
     def insert(self, value: Any, weight: float, prefix: list) -> None:
-        """Insert the given value into this Autocompleter.
-
-        The value is inserted with the given weight, and is associated with
-        the prefix sequence <prefix>.
-
-        If the value has already been inserted into this autocompleter
-        (compare values using ==), then the given weight should be *added* to
-        the existing weight of this value.
-
-        Preconditions:
-        - weight > 0
-        - the given value is either:
-            1) not in this Autocompleter, or
-            2) was previously inserted with the SAME prefix sequence
-        """
         if not prefix:
-            self.update_existing_value_or_add_new(value, weight)
-        else:
-            subtree = self.find_subtree(prefix[0])
-            if subtree is None:
-                subtree = CompressedPrefixTree()
-                subtree.root = self.root + [prefix[0]]
-                self.subtrees.append(subtree)
-            subtree.insert(value, weight, prefix[1:])
-        self.update_weight()
+            self.root = value
+            self.weight += weight
+            return
 
-    def find_subtree(self, prefix_elem: Any) -> Any:
-        """Return the subtree with the given prefix element, if it exists."""
+        self.insert_helper(value, weight, prefix)
+
+
+
+    def insert_helper(self, value: Any, weight: float, prefix: list):
+        """ Helper function to deal with recurse calls"""
+        inserted = False
+        for i, subtree in enumerate(self.subtrees):
+            overlap = self._get_overlap_length(subtree.root, prefix)
+
+            leaf = True
+            if len(subtree.subtrees) > 1:
+                leaf = False
+
+            if overlap > 0:
+                if overlap < len(subtree.root):
+
+                    common_prefix = subtree.root[:overlap]
+                    subtree_suffix = subtree.root[overlap:]
+
+                    new_subtree = CompressedPrefixTree()
+                    new_subtree.root = common_prefix
+                    new_subtree.weight = subtree.weight + weight
+
+                    full_existing_prefix = common_prefix + subtree_suffix
+                    subtree.root = full_existing_prefix
+
+                    full_new_prefix = prefix
+                    new_value_subtree = CompressedPrefixTree()
+                    new_value_subtree.root = full_new_prefix
+                    new_value_subtree.insert_simple_subtree(value, weight, [])
+
+                    new_subtree.subtrees.append(subtree)
+                    new_subtree.subtrees.append(new_value_subtree)
+
+                    self.subtrees[i] = new_subtree
+                    inserted = True
+                    break
+
+                elif overlap == len(subtree.root) and not leaf:
+
+                    potential_overlap = subtree._find_deepest_overlap(prefix, overlap)
+
+                    if potential_overlap:
+                        potential_overlap.insert_helper(value, weight, prefix)
+                        inserted = True
+                        break
+                    new_value = CompressedPrefixTree()
+                    new_value.root = value
+                    new_value.weight = weight
+
+                    new_subtree = CompressedPrefixTree()
+                    new_subtree.root = prefix
+                    new_subtree.weight = weight
+                    new_subtree.subtrees.append(new_value)
+
+                    subtree.weight += weight
+                    subtree.subtrees.append(new_subtree)
+
+                    inserted = True
+                elif overlap == len(prefix):
+                    potential_overlap = subtree._over_lap_length_subtrees(prefix, overlap)
+                    if potential_overlap:
+                        potential_overlap.insert(value, weight, prefix)
+                        inserted = True
+                        break
+                    subtree.insert(value, weight, prefix)
+                    inserted = True
+                    break
+
+        if not inserted:
+            new_subtree = CompressedPrefixTree()
+            new_subtree.root = prefix
+            new_subtree.insert_simple_subtree(value, weight, [])
+            self.subtrees.append(new_subtree)
+            self.weight += weight
+
+        self._update_weight()
+
+    def _get_overlap_length(self, subtree_root, new_prefix):
+        """Return the length of the overlap between two prefixes."""
+        overlap_length = 0
+        for a, b in zip(subtree_root, new_prefix):
+            if a == b:
+                overlap_length += 1
+            else:
+                break
+        return overlap_length
+
+    def _find_deepest_overlap(self, prefix, old_overlap):
+        """Return a subtree with the deepest overlap"""
+        max_overlap_subtree = None
+        max_overlap = old_overlap
+
         for subtree in self.subtrees:
-            if subtree.root[-1] == prefix_elem:
-                return subtree
+            overlap = self._get_overlap_length(subtree.root, prefix)
+            if overlap > max_overlap:
+                max_overlap = overlap
+                max_overlap_subtree = subtree
+
+        if max_overlap_subtree:
+            # Check if a deeper overlap can be found in the subtrees of the max_overlap_subtree
+            deeper_overlap_subtree = max_overlap_subtree._find_deepest_overlap(prefix, max_overlap)
+            return deeper_overlap_subtree if deeper_overlap_subtree else max_overlap_subtree
+
         return None
 
-    def remove(self, prefix: list) -> None:
-        """Remove all values associated with the given prefix.
+    def insert_simple_subtree(self, value: Any, weight: float, prefix: list) -> None:
+        """Insert a new compressed prefix tree as a subtree with the given prefix."""
+        new_subtree = CompressedPrefixTree()
+        new_subtree.root = prefix
+        new_subtree.weight = weight
+        new_subtree.subtrees = []  # Initialize with no subtrees
 
-        Preconditions:
-        - the given prefix is associated with at least one value in this Autocompleter """
         if not prefix:
-            self.subtrees = []
-            self.weight = 0.0
+            # If the prefix is empty, this subtree is a leaf with the given value
+            new_subtree.root = value
         else:
-            subtree = self.find_subtree(prefix[0])
-            if subtree is not None:
-                subtree.remove(prefix[1:])
-                if subtree.is_empty():
-                    self.subtrees.remove(subtree)
-        self.update_weight()
+            # For non-empty prefixes, create a leaf node with the value
+            leaf = CompressedPrefixTree()
+            leaf.root = value
+            leaf.weight = weight
+            new_subtree.subtrees.append(leaf)
+
+        self.subtrees.append(new_subtree)
+        self._update_weight()
+
+    def _update_weight(self):
+        """Update the weight of this tree based on its subtrees."""
+        self.weight = sum(subtree.weight for subtree in self.subtrees)
+
+    def update_complete_weight(self) -> None:
+        """Recursively update the weight of this tree based on all nested subtrees."""
+        self.weight = 0  # Reset weight to 0 before recalculating
+        for subtree in self.subtrees:
+            subtree.update_weight()  # Recursively update the weight of each subtree
+            self.weight += subtree.weight  # Add the updated weight of the subtree
 
 
 if __name__ == '__main__':
