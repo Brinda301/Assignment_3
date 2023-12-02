@@ -268,3 +268,17 @@ def test_compressed_prefix_tree_structure() -> None:
 if __name__ == '__main__':
     import pytest
     pytest.main(['a2_sample_test.py'])
+
+    """
+    t = CompressedPrefixTree()
+    t.insert('cat', 2.0, ['c', 'a', 't'])
+    t.insert('car', 3.0, ['c', 'a', 'r'])
+    t.insert('care', 4.0, ['c', 'a', 'r', 'e'])
+    t.insert('danger', 4.0, ['d', 'a', 'n', 'g', 'e', 'r'])
+    t.insert('door', 4.0, ['d', 'o', 'o', 'r'])
+    t.insert('cared', 4.0, ['c', 'a', 'r', 'e', 'd'])
+    t.insert('carpet', 4.0, ['c', 'a', 'r', 'p', 'e', 't'])
+    print(t)
+    
+    t.insert('cared', 4.0, ['c', 'a', 'r', 'e', 'd'])
+    """

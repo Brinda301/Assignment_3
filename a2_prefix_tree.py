@@ -197,7 +197,7 @@ class SimplePrefixTree(Autocompleter):
         """
         # If the prefix is empty, directly update or add the value as a leaf
         if not prefix:
-            self.update_existing_value_or_add_new(value, weight)
+            self.update_value_or_add_new(value, weight)
         else:
             # Search for the subtree with the next element in the prefix
             subtree = next((sub for sub in self.subtrees if sub.root == self.root + [prefix[0]]),
@@ -214,7 +214,7 @@ class SimplePrefixTree(Autocompleter):
         # Update the weight of the current tree
         self.update_weight()
 
-    def update_existing_value_or_add_new(self, value: Any, weight: float) -> None:
+    def update_value_or_add_new(self, value: Any, weight: float) -> None:
         """Update an existing value or add a new leaf."""
         for subtree in self.subtrees:
             if subtree.root == value:
@@ -260,7 +260,7 @@ class SimplePrefixTree(Autocompleter):
 
         return suggestions
 
-    def find_subtree(self, prefix: list):
+    def find_subtree(self, prefix: list) -> Any:
         """Find the subtree corresponding to the given prefix."""
         if not prefix:
             return self
@@ -346,9 +346,7 @@ class CompressedPrefixTree(SimplePrefixTree):
 
         self.insert_helper(value, weight, prefix)
 
-
-
-    def insert_helper(self, value: Any, weight: float, prefix: list):
+    def insert_helper(self, value: Any, weight: float, prefix: list) -> None:
         """ Helper function to deal with recurse calls"""
         inserted = False
         for i, subtree in enumerate(self.subtrees):
@@ -405,9 +403,11 @@ class CompressedPrefixTree(SimplePrefixTree):
 
                     inserted = True
                 elif overlap == len(prefix):
-                    potential_overlap = subtree._over_lap_length_subtrees(prefix, overlap)
+
+                    potential_overlap = subtree._find_deepest_overlap(prefix, overlap)
+
                     if potential_overlap:
-                        potential_overlap.insert(value, weight, prefix)
+                        potential_overlap.insert_helper(value, weight, prefix)
                         inserted = True
                         break
                     subtree.insert(value, weight, prefix)
@@ -421,9 +421,9 @@ class CompressedPrefixTree(SimplePrefixTree):
             self.subtrees.append(new_subtree)
             self.weight += weight
 
-        self._update_weight()
+        self.update_weight()
 
-    def _get_overlap_length(self, subtree_root, new_prefix):
+    def _get_overlap_length(self, subtree_root: list, new_prefix: list) -> int:
         """Return the length of the overlap between two prefixes."""
         overlap_length = 0
         for a, b in zip(subtree_root, new_prefix):
@@ -433,7 +433,7 @@ class CompressedPrefixTree(SimplePrefixTree):
                 break
         return overlap_length
 
-    def _find_deepest_overlap(self, prefix, old_overlap):
+    def _find_deepest_overlap(self, prefix: list, old_overlap: int) -> Any:
         """Return a subtree with the deepest overlap"""
         max_overlap_subtree = None
         max_overlap = old_overlap
@@ -469,11 +469,7 @@ class CompressedPrefixTree(SimplePrefixTree):
             new_subtree.subtrees.append(leaf)
 
         self.subtrees.append(new_subtree)
-        self._update_weight()
-
-    def _update_weight(self):
-        """Update the weight of this tree based on its subtrees."""
-        self.weight = sum(subtree.weight for subtree in self.subtrees)
+        self.update_weight()
 
     def update_complete_weight(self) -> None:
         """Recursively update the weight of this tree based on all nested subtrees."""
@@ -497,8 +493,8 @@ if __name__ == '__main__':
     # you see "None!" under both "Code Errors" and "Style and Convention Errors".
     # TIP: To quickly uncomment lines in PyCharm, select the lines below and press
     # "Ctrl + /" or "⌘ + /".
-    # import python_ta
-    # python_ta.check_all(config={
-    #     'max-line-length': 100,
-    #     'max-nested-blocks': 4
-    # })
+    import python_ta
+    python_ta.check_all(config={
+        'max-line-length': 100,
+        'max-nested-blocks': 4
+    })
