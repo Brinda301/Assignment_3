@@ -67,11 +67,7 @@ class LetterAutocompleteEngine:
         - config['file'] is a valid path to a file as described above
         - config['autocompleter'] in ['simple', 'compressed']
         """
-        ...
 
-        # We've opened the file for you here. You should iterate over the
-        # lines of the file and process them according to the description in
-        # this method's docstring.
         if config['autocompleter'] == 'simple':
             self.autocompleter = SimplePrefixTree()
         elif config['autocompleter'] == 'compressed':
@@ -91,33 +87,6 @@ class LetterAutocompleteEngine:
         # Convert all letters to lowercase and remove unwanted characters
         return ''.join(char.lower() for char in input_string if char.isalnum() or char.isspace())
 
-    #     with open(config['file'], encoding='utf8') as f:
-    #         for line in f:
-    #             sanitized = self.sanitize(line)
-    #             if sanitized.strip() != '':
-    #                 self.autocompleter.insert(sanitized, 1.0, list(sanitized))
-    #
-    # def sanitize(self, input_string):
-    #     """ Sanitization Method for initializer"""
-    #     # Convert all letters to lowercase
-    #     lowercase_string = input_string.lower()
-    #
-    #     # Remove characters that are not alphanumeric and not space
-    #     sanitized_string = ''.join(
-    #         char for char in lowercase_string if char.isalnum() or char.isspace())
-    #
-    #     return sanitized_string
-    #
-    # def sanitize(self, input_string):
-    #     """ Sanitization Method for initializer"""
-    #     # Convert all letters to lowercase
-    #     lowercase_string = input_string.lower()
-    #
-    #     # Remove characters that are not alphanumeric and not space
-    #     sanitized_string = ''.join(
-    #         char for char in lowercase_string if char.isalnum() or char.isspace())
-    #
-    #     return sanitized_string
     def autocomplete(self, prefix: str, limit: int | None = None) -> list[tuple[str, float]]:
         """Return up to <limit> matches for the given prefix string.
 
@@ -189,8 +158,7 @@ class SentenceAutocompleteEngine:
         one line of the input file; this results in that string receiving
         the sum of the specified weights from each line.
         """
-        # We haven't given you any starter code here! You should review how
-        # you processed CSV files on Assignment 1.
+
         if config['autocompleter'] == 'simple':
             self.autocompleter = SimplePrefixTree()
         elif config['autocompleter'] == 'compressed':

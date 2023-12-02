@@ -346,7 +346,7 @@ class CompressedPrefixTree(SimplePrefixTree):
 
         self.insert_helper(value, weight, prefix)
 
-    def insert_helper(self, value: Any, weight: float, prefix: list) -> None:
+    def insert_helper(self, value: Any, weight: float, prefix: list, is_recursive = False) -> None:
         """ Helper function to deal with recurse calls"""
         inserted = False
         for i, subtree in enumerate(self.subtrees):
@@ -382,26 +382,31 @@ class CompressedPrefixTree(SimplePrefixTree):
                     break
 
                 elif overlap == len(subtree.root) and not leaf:
-
-                    potential_overlap = subtree._find_deepest_overlap(prefix, overlap)
-
-                    if potential_overlap:
-                        potential_overlap.insert_helper(value, weight, prefix)
+                    if is_recursive:
+                        subtree.insert(value, weight, prefix[overlap:])
                         inserted = True
                         break
-                    new_value = CompressedPrefixTree()
-                    new_value.root = value
-                    new_value.weight = weight
+                    else:
+                        potential_overlap = subtree._find_deepest_overlap(prefix, overlap)
 
-                    new_subtree = CompressedPrefixTree()
-                    new_subtree.root = prefix
-                    new_subtree.weight = weight
-                    new_subtree.subtrees.append(new_value)
+                        if potential_overlap:
+                            potential_overlap.insert_helper(value, weight, prefix, True)
+                            inserted = True
+                            break
 
-                    subtree.weight += weight
-                    subtree.subtrees.append(new_subtree)
+                        new_value = CompressedPrefixTree()
+                        new_value.root = value
+                        new_value.weight = weight
 
-                    inserted = True
+                        new_subtree = CompressedPrefixTree()
+                        new_subtree.root = prefix
+                        new_subtree.weight = weight
+                        new_subtree.subtrees.append(new_value)
+
+                        subtree.weight += weight
+                        subtree.subtrees.append(new_subtree)
+
+                        inserted = True
                 elif overlap == len(prefix):
 
                     potential_overlap = subtree._find_deepest_overlap(prefix, overlap)
@@ -423,7 +428,7 @@ class CompressedPrefixTree(SimplePrefixTree):
 
         self.update_weight()
 
-    def _get_overlap_length(self, subtree_root: list, new_prefix: list) -> int:
+    def _get_overlap_length(self, subtree_root: Any, new_prefix: list) -> int:
         """Return the length of the overlap between two prefixes."""
         overlap_length = 0
         for a, b in zip(subtree_root, new_prefix):
